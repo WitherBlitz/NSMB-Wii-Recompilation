@@ -33,6 +33,19 @@ inline thread_local bool g_mkwHostNiActive = false;
 inline constexpr double kMkwNiFlushThreshold = 0x1p-126;  // 0x3810000000000000
 inline thread_local double g_mkwNiFlushThreshold = 0.0;
 
+// The float helpers read the NI state once or twice per operation, through the mirrored
+// thread-locals on every host. (PR #44 also read FPCR directly on aarch64; that part isn't
+// included, so Android keeps reading the mirror as before.)
+MKW_PPC_FORCE_INLINE bool MkwHostNiActiveInline() noexcept
+{
+    return g_mkwHostNiActive;
+}
+
+MKW_PPC_FORCE_INLINE double MkwNiFlushThresholdInline() noexcept
+{
+    return g_mkwNiFlushThreshold;
+}
+
 // Host FP control register access (MXCSR on x86_64, FPCR on AArch64), abstracted so
 // MkwApplyHostNiMode/MkwRestoreHostMxcsr and CpuContextScope (ppc_isa_context.h) don't each need
 // their own per-arch branch.
