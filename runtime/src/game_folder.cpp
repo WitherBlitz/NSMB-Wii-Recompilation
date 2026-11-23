@@ -505,8 +505,8 @@ std::string Problem(const fs::path& root) {
 }
 
 namespace {
-// Each retail disc's main.dol, as projects/nsmbw/variants/variants.toml pins it (main_dol_sha256).
-// The Japanese disc has none pinned yet, so it never counts as retail until one is added here.
+// The retail discs, and each one's main.dol as projects/nsmbw/variants/variants.toml pins it
+// (main_dol_sha256), which RetailDisc only logs. The Japanese disc isn't listed yet.
 struct RetailDol {
     const char* id;
     const char* sha256;
@@ -542,6 +542,9 @@ std::string MainDolSha256(const fs::path& path) {
 }
 } // namespace
 
+// The disc ID decides. The disc's main.dol doesn't: this build never runs it (the code and data it was
+// translated from are built in), and players' copies of it can differ while the game plays perfectly,
+// which hid the Mods tab from them (issue #58). Whether it matches the pin only goes into the log.
 bool RetailDisc() {
     static const bool retail = [] {
         const fs::path root = Find(RuntimeConfigFile::ResolvedDvdRoot());
@@ -558,7 +561,7 @@ bool RetailDisc() {
             if (id == dol.id) {
                 const bool same = MainDolSha256(root / "sys" / "main.dol") == dol.sha256;
                 RT_LOGF(RT_TAG_RUNTIME, "game folder: %s, %s main.dol\n", id.c_str(), same ? "the retail" : "a changed");
-                return same;
+                return true;
             }
         }
         return false;
