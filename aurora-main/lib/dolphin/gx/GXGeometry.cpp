@@ -177,7 +177,10 @@ void GXSetVtxDesc(GXAttr attr, GXAttrType type) {
   // The water and lava meshes set the same descriptors thousands of times per frame. If the
   // producer's state and the last register written to the FIFO already agree, there is nothing to
   // send. A display list call invalidates the shadow, so the first set after one is always sent.
+  // NRM and NBT share one descriptor field (nrmType), so one of them matching its own last value
+  // doesn't mean the register holds it: they always take the full path.
   if (!aurora::gx::fifo::in_display_list() && attr >= GX_VA_PNMTXIDX && attr < GX_VA_MAX_ATTR &&
+      attr != GX_VA_NRM && attr != GX_VA_NBT &&
       __gx->vtxDescTypes[attr] == static_cast<u8>(type) && vcd_shadow_matches()) {
     return;
   }
@@ -252,8 +255,9 @@ void GXSetVtxAttrFmt(GXVtxFmt vtxfmt, GXAttr attr, GXCompCnt cnt, GXCompType typ
   CHECK(attr >= GX_VA_POS && attr < GX_VA_MAX_ATTR, "invalid attr {}", underlying(attr));
 
   const u32 spec = vat_spec(cnt, type, frac);
-  if (!aurora::gx::fifo::in_display_list() && __gx->vatSpec[vtxfmt][attr] == spec &&
-      vat_shadow_matches(vtxfmt)) {
+  // NRM and NBT share one VAT field, so neither can trust its own vatSpec entry.
+  if (!aurora::gx::fifo::in_display_list() && attr != GX_VA_NRM && attr != GX_VA_NBT &&
+      __gx->vatSpec[vtxfmt][attr] == spec && vat_shadow_matches(vtxfmt)) {
     return;
   }
 
