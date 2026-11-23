@@ -171,67 +171,31 @@ final class AppFiles {
         return null;
     }
 
-    /**
-     * Each retail disc and its main.dol's SHA-256, as projects/nsmbw/variants/variants.toml pins them
-     * (runtime/src/game_folder.cpp has the same list). The Japanese disc (SMNJ01) has none pinned yet.
-     */
-    private static final String[][] RETAIL_DOLS = {
-        {"SMNE01", "6d755ec24c395fee600a856a85785e0e99c0b7ecb680d573a6cdd1aa6f7beee7"},  // USA rev 1
-        {"SMNP01", "51a2a8b0941e8fe3390404a9b2094e3c78246a999efa58fcc8a7c534c11d7b5b"},  // Europe rev 1
-    };
-    /** The last retailDisc answer, for that main.dol's path, size and time: hashed once per import. */
-    private static String retailKey;
-    private static boolean retailAnswer;
+    /** The retail discs (runtime/src/game_folder.cpp has the same list). The Japanese disc isn't listed yet. */
+    private static final String[] RETAIL_IDS = {"SMNE01", "SMNP01"};  // USA rev 1, Europe rev 1
 
     /**
-     * Whether the extracted game at `root` is the original, unchanged: a retail disc ID and the
-     * main.dol it came with. A modded disc (Newer and the like) isn't. Reads main.dol (about 4 MB):
-     * call it off the UI thread.
+     * Whether the extracted game at `root` is the original: a retail disc ID, read from sys/boot.bin.
+     * A modded disc with its own ID (Newer and the like) isn't. Its main.dol isn't asked: the game never
+     * runs it (the code and data it was translated from are built in), and players' copies of it can
+     * differ while the game plays perfectly, which hid Mods from them (issue #58).
      */
-    static synchronized boolean retailDisc(File root) {
-        final File dol = new File(root, "sys/main.dol");
-        final String key = dol.getAbsolutePath() + ":" + dol.length() + ":" + dol.lastModified();
-        if (key.equals(retailKey)) {
-            return retailAnswer;
-        }
-        boolean retail = false;
+    static boolean retailDisc(File root) {
         final byte[] header = new byte[6];
         try (InputStream in = new FileInputStream(new File(root, "sys/boot.bin"))) {
-            if (readFully(in, header) == header.length) {
-                final String id = new String(header, 0, 6, StandardCharsets.US_ASCII);
-                for (String[] pinned : RETAIL_DOLS) {
-                    if (pinned[0].equals(id)) {
-                        retail = pinned[1].equals(sha256(dol));
-                    }
-                }
+            if (readFully(in, header) != header.length) {
+                return false;
             }
         } catch (IOException e) {
-            retail = false;
+            return false;
         }
-        retailKey = key;
-        retailAnswer = retail;
-        return retail;
-    }
-
-    private static String sha256(File file) throws IOException {
-        final java.security.MessageDigest digest;
-        try {
-            digest = java.security.MessageDigest.getInstance("SHA-256");
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IOException(e);
-        }
-        try (InputStream in = new FileInputStream(file)) {
-            final byte[] buffer = new byte[1 << 16];
-            int read;
-            while ((read = in.read(buffer)) > 0) {
-                digest.update(buffer, 0, read);
+        final String id = new String(header, 0, 6, StandardCharsets.US_ASCII);
+        for (String retail : RETAIL_IDS) {
+            if (retail.equals(id)) {
+                return true;
             }
         }
-        final StringBuilder hex = new StringBuilder();
-        for (byte b : digest.digest()) {
-            hex.append(String.format(Locale.ROOT, "%02x", b & 0xFF));
-        }
-        return hex.toString();
+        return false;
     }
 
     static int readFully(InputStream in, byte[] buffer) throws IOException {

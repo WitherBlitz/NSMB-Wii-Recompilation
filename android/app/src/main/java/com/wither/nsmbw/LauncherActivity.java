@@ -560,7 +560,7 @@ public final class LauncherActivity extends Activity {
         showModsIfRetail(present && !newer);
     }
 
-    /** Mods only for the original game: its disc ID and main.dol, checked off the UI thread. */
+    /** Mods only for the original game: its disc ID (AppFiles.retailDisc), read off the UI thread. */
     private void showModsIfRetail(boolean baseGame) {
         if (!baseGame) {
             mods.setVisibility(View.GONE);
